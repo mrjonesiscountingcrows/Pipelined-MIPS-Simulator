@@ -61,6 +61,7 @@ typedef struct ID_EX
 	int MemtoReg;
 	int RegWrite;
 	int RegDst;
+    int RegDesNumber;
 	int PCSrc;
 	int branch;
 	int shamt;
@@ -68,6 +69,8 @@ typedef struct ID_EX
 	uint32_t PC;
 	uint32_t RS;
 	uint32_t RT;
+    uint32_t reg1;
+    uint32_t reg2;
 	uint32_t RD;
 	uint32_t immediate;
 	uint32_t address;
@@ -81,6 +84,7 @@ int branch;
 int memRead;
 int memWrite;
 int RegDst;
+int RegDesNumber;
 uint32_t result;
 uint32_t RT;           // USED IN DATA MEM SECTION for read or write
 uint32_t RS;
@@ -94,6 +98,7 @@ typedef struct MEM_WB
 int RegWrite;
 int MemtoReg;
 int RegDst;
+int RegDesNumber;
 uint32_t result;
 uint32_t RT;           // USED IN DATA MEM SECTION for read or write
 uint32_t RS;
@@ -129,5 +134,7 @@ void pipe_stage_mem();
 extern buffer_wb buffer_MEM_WB;
 extern buffer_wb emptyMEMWB;
 void pipe_stage_wb();
+void pipe_stage_ex_hazard();
+void pipe_stage_mem_hazard();
 
 #endif

@@ -22,6 +22,12 @@ int Estall=0;
 int FTstall=0;
 int ETstall=0;
 int temp_jump_cs=0;
+
+int forwardA=0;
+int forwardB=0;
+
+
+//https://github.com/tapantandon/Pipelined-MIPS-Simulator.git
 /* global pipeline state */
 CPU_State CURRENT_STATE;
 CPU_State NEXT_STATE;
@@ -90,7 +96,7 @@ void stall()
 	pipe_stage_wb();
 	pipe_stage_mem();
 }
-*/
+
 void stall_slt()
 {
 	pipe_stage_wb();
@@ -98,7 +104,7 @@ void stall_slt()
 
 }
 
-
+*/
 
 void pipe_init()
 {
@@ -118,6 +124,11 @@ void pipe_cycle()
 	pipe_stage_execute();
 	pipe_stage_decode();
 	pipe_stage_fetch();
+    printf("------------------------------------------\n");
+    pipe_stage_ex_hazard();
+    pipe_stage_mem_hazard();
+    printf("\n\n----------------------Next Cycle------------------------------------------------\n\n");
+
 
      if(temp_jump_cs==1)
     {	
@@ -152,7 +163,7 @@ void pipe_stage_wb()
         if (buffer_MEM_WB.RegDst==1)
         {
             //
-		    NEXT_STATE.REGS[buffer_MEM_WB.RD] = buffer_MEM_WB.result;
+		    NEXT_STATE.REGS[buffer_MEM_WB.RegDesNumber] = buffer_MEM_WB.result;
             printf("wrote R: %x\n",NEXT_STATE.REGS[buffer_EX_MEM.RD]);
 }
 
@@ -160,7 +171,7 @@ void pipe_stage_wb()
         {
             // extend to immediate
 		   // NEXT_STATE.REGS[buffer_MEM_WB.RT] = buffer_EX_MEM.RT;
-            NEXT_STATE.REGS[buffer_MEM_WB.RT] = buffer_MEM_WB.result;
+            NEXT_STATE.REGS[buffer_MEM_WB.RegDesNumber] = buffer_MEM_WB.result;
             printf("wrote I: %x\n",NEXT_STATE.REGS[buffer_MEM_WB.RT]);
         }
 
@@ -177,12 +188,12 @@ void pipe_stage_mem()
 	if(buffer_EX_MEM.memRead==1)
 	{
 		// read from memory : lw
-		NEXT_STATE.REGS[buffer_EX_MEM.RT] = mem_read_32(buffer_EX_MEM.RS);
+		buffer_MEM_WB.result = mem_read_32(buffer_EX_MEM.result);
 	}
 	else if (buffer_EX_MEM.memWrite==1)
 	{
 		// Write to memory
-		mem_write_32(buffer_EX_MEM.RS,buffer_EX_MEM.result);
+		mem_write_32(buffer_EX_MEM.RegDesNumber,buffer_EX_MEM.result);
 	}
 	// forward everything to next state
 	// Move to next cylce
@@ -195,6 +206,7 @@ void pipe_stage_mem()
     buffer_MEM_WB.RS= buffer_EX_MEM.RS;
     buffer_MEM_WB.RD= buffer_EX_MEM.RD;
     buffer_MEM_WB.RegWrite= buffer_EX_MEM.RegWrite;
+    buffer_MEM_WB.RegDesNumber=buffer_EX_MEM.RegDesNumber;
     buffer_MEM_WB.result= buffer_EX_MEM.result;
     //printf("Regwrite status:%d\n",buffer_EX_MEM.RegWrite);
 
@@ -210,48 +222,48 @@ void pipe_stage_execute()
 	// R- Type Add Instruction
 	if(Estall){printf("Stalling execute\n"); return; }
 
-	if (buffer_ID_EX.ALUCTRL==2 && buffer_ID_EX.funct==32 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
+	if (buffer_ID_EX.funct==32 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R Add\n");
-		buffer_EX_MEM.result = buffer_ID_EX.RS + buffer_ID_EX.RT;
+		buffer_EX_MEM.result = buffer_ID_EX.reg1 + buffer_ID_EX.reg2;
 	}
 
 	// R- Type Addu Instruction
 
-	else if (buffer_ID_EX.ALUCTRL==2 && buffer_ID_EX.funct==33 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
+	else if (buffer_ID_EX.funct==33 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R Addu\n");
-		buffer_EX_MEM.result = buffer_ID_EX.RS + buffer_ID_EX.RT;
+		buffer_EX_MEM.result = buffer_ID_EX.reg1 + buffer_ID_EX.reg2;
 	}
 
 
 	// R- Type Sub Instruction
 
-	else if (buffer_ID_EX.ALUCTRL==6 && buffer_ID_EX.funct==34 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
+	else if (buffer_ID_EX.funct==34 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R sub\n");
-		buffer_EX_MEM.result = buffer_ID_EX.RS - buffer_ID_EX.RT;
+		buffer_EX_MEM.result = buffer_ID_EX.reg1 - buffer_ID_EX.reg2;
 	}
 
 	// R- Type Subu Instruction
 
-	else if (buffer_ID_EX.ALUCTRL==6 && buffer_ID_EX.funct==35 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
+	else if (buffer_ID_EX.funct==35 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R subu\n");
-		buffer_EX_MEM.result = buffer_ID_EX.RS - buffer_ID_EX.RT;
+		buffer_EX_MEM.result = buffer_ID_EX.reg1 - buffer_ID_EX.reg2;
 	}
 
 	// R- Type Slt Instruction
 
-	else if (buffer_ID_EX.ALUCTRL==7 && buffer_ID_EX.funct==42 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
+	else if (buffer_ID_EX.funct==42 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
 
-		stall_slt();
-		stall_slt();
+		//stall_slt();
+		//stall_slt();
 		printf("R slt\n");
 
 
-		if(buffer_ID_EX.RS  < buffer_ID_EX.RT)
+		if(buffer_ID_EX.reg1  < buffer_ID_EX.reg2)
 		{
 			buffer_EX_MEM.result = 1;
 		}
@@ -260,16 +272,17 @@ void pipe_stage_execute()
 		{
 			buffer_EX_MEM.result = 0;
 		}
+        printf("Result for slt is:%x \n", buffer_EX_MEM.result);
 
 	}
 
 
 	// R- Type Sltu Instruction
 
-	else if (buffer_ID_EX.ALUCTRL==7 && buffer_ID_EX.funct==43 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
+	else if (buffer_ID_EX.funct==43 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R sltu\n");
-		if(buffer_ID_EX.RS < buffer_ID_EX.RT)
+		if(buffer_ID_EX.reg1  < buffer_ID_EX.reg2)
 		{
 			buffer_EX_MEM.result = 1;
 		}
@@ -290,7 +303,7 @@ void pipe_stage_execute()
         printf("I Addi\n");
 		uint32_t temp = extension(buffer_ID_EX.immediate, 16);
 
-		buffer_EX_MEM.result = buffer_ID_EX.RS + temp;
+		buffer_EX_MEM.result = buffer_ID_EX.reg1 + temp;
 
 	}
 
@@ -302,7 +315,7 @@ void pipe_stage_execute()
         printf("I Addiu\n");
 		uint32_t temp = extension(buffer_ID_EX.immediate, 16);
 
-		buffer_EX_MEM.result = buffer_ID_EX.RS + temp;
+		buffer_EX_MEM.result = buffer_ID_EX.reg1 + temp;
 
 	}
 
@@ -321,7 +334,7 @@ void pipe_stage_execute()
 	else if (buffer_ID_EX.opcode==13 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==1 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("I Ori\n");
-		buffer_EX_MEM.result = buffer_ID_EX.RS | buffer_ID_EX.immediate;
+		buffer_EX_MEM.result = buffer_ID_EX.reg1 | buffer_ID_EX.immediate;
 
 	}
 
@@ -333,7 +346,7 @@ void pipe_stage_execute()
 		// Do we need sign extension for RS?
 		buffer_ID_EX.immediate = extension(buffer_ID_EX.immediate,16);
 		// Calculate the offset with immediate value
-		buffer_EX_MEM.RS= buffer_ID_EX.RS + buffer_ID_EX.immediate*4;
+		buffer_EX_MEM.result= buffer_ID_EX.reg1 + buffer_ID_EX.immediate*4;
 
 	}
 
@@ -344,7 +357,7 @@ void pipe_stage_execute()
         printf("I Sw\n");
 		// Calculate the address to write
 		buffer_ID_EX.immediate = extension(buffer_ID_EX.immediate,16);
-		buffer_EX_MEM.RS= buffer_ID_EX.RS + buffer_ID_EX.immediate*4;
+		buffer_EX_MEM.result= buffer_ID_EX.reg1 + buffer_ID_EX.immediate*4;
 
 	}
 
@@ -353,13 +366,13 @@ void pipe_stage_execute()
 
 	else if (buffer_ID_EX.ALUCTRL==6 && buffer_ID_EX.opcode==4 && buffer_ID_EX.RegWrite==0 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
-		if((buffer_ID_EX.RS - buffer_ID_EX.RT)==0)
+		if((buffer_ID_EX.reg1 - buffer_ID_EX.reg2)==0)
         {
          printf("I beq\n");
          uint32_t temp= extension(buffer_ID_EX.immediate,16);
          temp = temp <<2;
          TempPC =buffer_ID_EX.PC+ temp+4;
-		 printf("The value in RS is: %u \n", buffer_ID_EX.RS);
+		 printf("The value in RS is: %u \n", buffer_ID_EX.reg1);
 		 flush();
 		 //buffer_ID_EX=emptyIDEX;
 		 //buffer_IF_ID=emptyIFID;
@@ -372,7 +385,7 @@ void pipe_stage_execute()
 	else if (buffer_ID_EX.ALUCTRL==6 && buffer_ID_EX.opcode==5 && buffer_ID_EX.RegWrite==0 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("I Bne\n");
-		if((buffer_ID_EX.RS - buffer_ID_EX.RT)!=0)
+		if((buffer_ID_EX.reg1 - buffer_ID_EX.reg2)!=0)
         {
          uint32_t temp= extension(buffer_ID_EX.immediate,16);
 		 printf("Temp value after sign extension: %x \n",temp);
@@ -393,8 +406,8 @@ void pipe_stage_execute()
 	else if (buffer_ID_EX.ALUCTRL==6 && buffer_ID_EX.opcode==7 && buffer_ID_EX.RegWrite==0 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("Bgtz\n");
-		printf("The value in RS is: %u \n", buffer_ID_EX.RS);
-		if(buffer_ID_EX.RS > 0)
+		printf("The value in RS is: %u \n", buffer_ID_EX.reg1);
+		if(buffer_ID_EX.reg1 > 0)
         {
          uint32_t temp= extension(buffer_ID_EX.immediate,16);
          temp = temp <<2;
@@ -413,10 +426,10 @@ void pipe_stage_execute()
 	else if (buffer_ID_EX.ALUCTRL==7 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
 
-        buffer_ID_EX.RS = extension(buffer_ID_EX.RS,16);
-        buffer_ID_EX.RT = extension(buffer_ID_EX.immediate,16);
+        buffer_ID_EX.reg1 = extension(buffer_ID_EX.reg1,16);
+        buffer_ID_EX.reg2 = extension(buffer_ID_EX.immediate,16);
 
-        if(buffer_ID_EX.RS  < buffer_ID_EX.immediate)
+        if(buffer_ID_EX.reg1  < buffer_ID_EX.immediate)
 		{
 			buffer_EX_MEM.result = 1;
 		}
@@ -439,6 +452,8 @@ void pipe_stage_execute()
                 buffer_EX_MEM.RS=buffer_ID_EX.RS;
                 buffer_EX_MEM.RT=buffer_ID_EX.RT;
                 buffer_EX_MEM.RD=buffer_ID_EX.RD;
+                buffer_EX_MEM.RegDesNumber=buffer_ID_EX.RegDesNumber;
+                
                 //printf("Regwrite status:%d\n",buffer_EX_MEM.RegWrite);
 }
 
@@ -466,11 +481,12 @@ void pipe_stage_decode()
 	if(buffer_ID_EX.opcode ==0)
 	{
         printf("R-type\n");
-		uint32_t RS= (buffer_IF_ID.instruction>>21) & 0x1F;
-		buffer_ID_EX.RS= CURRENT_STATE.REGS[RS];
-		uint32_t RT = (buffer_IF_ID.instruction>>16) & 0x1F;
-		buffer_ID_EX.RT= CURRENT_STATE.REGS[RT];
+		buffer_ID_EX.RS= (buffer_IF_ID.instruction>>21) & 0x1F;
+		buffer_ID_EX.reg1= CURRENT_STATE.REGS[buffer_ID_EX.RS];
+		buffer_ID_EX.RT = (buffer_IF_ID.instruction>>16) & 0x1F;
+		buffer_ID_EX.reg2= CURRENT_STATE.REGS[buffer_ID_EX.RT];
 		buffer_ID_EX.RD = (buffer_IF_ID.instruction>>11) & 0x1F;
+        buffer_ID_EX.RegDesNumber=buffer_ID_EX.RD;
 		buffer_ID_EX.funct = buffer_IF_ID.instruction & 0x3F;
 		buffer_ID_EX.shamt = (buffer_IF_ID.instruction>>6) & 0x1F;
         printf("funct:%d \n",buffer_ID_EX.funct);
@@ -507,9 +523,11 @@ void pipe_stage_decode()
 	else if(buffer_ID_EX.opcode==5 || buffer_ID_EX.opcode==4 || buffer_ID_EX.opcode==8 || buffer_ID_EX.opcode==9 || buffer_ID_EX.opcode==10 || buffer_ID_EX.opcode==13 || buffer_ID_EX.opcode==15 || buffer_ID_EX.opcode==35 || buffer_ID_EX.opcode==43 || buffer_ID_EX.opcode==7)
 	{
         printf("I-type\n");
-		uint32_t RS= (buffer_IF_ID.instruction>>21) & 0x1F;
-		buffer_ID_EX.RS= CURRENT_STATE.REGS[RS];
+		buffer_ID_EX.RS= (buffer_IF_ID.instruction>>21) & 0x1F;
+		buffer_ID_EX.reg1= CURRENT_STATE.REGS[buffer_ID_EX.RS];
 		buffer_ID_EX.RT = (buffer_IF_ID.instruction>>16) & 0x1F;
+        buffer_ID_EX.reg2= CURRENT_STATE.REGS[buffer_ID_EX.RT];
+        buffer_ID_EX.RegDesNumber=buffer_ID_EX.RT;
 		buffer_ID_EX.immediate = buffer_IF_ID.instruction & 0x000FFFF;
 
 	}
@@ -546,6 +564,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.memWrite = 0;
                 branch  = 1;
 				buffer_ID_EX.PCSrc = 1;
+                buffer_ID_EX.RegDst = 0;
                 Fstall=2;
 				break;
 
@@ -557,6 +576,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.RegWrite = 0;
 				buffer_ID_EX.MemtoReg = 0;
 				buffer_ID_EX.memWrite = 0;
+                buffer_ID_EX.RegDst = 0;                
                 branch  = 1;
 				FTstall=2;
 				break;
@@ -569,6 +589,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.RegWrite = 0;
 				buffer_ID_EX.MemtoReg = 0;
 				buffer_ID_EX.memWrite = 0;
+                buffer_ID_EX.RegDst = 0;
                 branch  = 1;
 				buffer_ID_EX.PCSrc = 1;
                 FTstall=2;
@@ -584,6 +605,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.MemtoReg = 0;
 				buffer_ID_EX.memWrite = 0;
 				buffer_ID_EX.PCSrc = 0;
+                buffer_ID_EX.RegDst = 0;
 				break;
 
 			case 9:   //addiu instruction
@@ -595,6 +617,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.MemtoReg = 0;
 				buffer_ID_EX.memWrite = 0;
 				buffer_ID_EX.PCSrc = 0;
+                buffer_ID_EX.RegDst = 0;
 				break;
 
 			case 10:   //slti instruction
@@ -606,6 +629,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.MemtoReg = 0;
 				buffer_ID_EX.memWrite = 0;
 				buffer_ID_EX.PCSrc = 0;
+                buffer_ID_EX.RegDst = 0;
 				break;
 
 			case 13:   //ori instruction
@@ -617,6 +641,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.MemtoReg = 0;
 				buffer_ID_EX.memWrite = 0;
 				buffer_ID_EX.PCSrc = 0;
+                buffer_ID_EX.RegDst = 0;
 				break;
 
 			case 15:   //lui instruction
@@ -628,6 +653,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.MemtoReg = 0;
 				buffer_ID_EX.memWrite = 0;
 				buffer_ID_EX.PCSrc = 0;
+                buffer_ID_EX.RegDst = 0;
 				break;
 
 			case 35:   //lw instruction
@@ -639,6 +665,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.MemtoReg = 1;
 				buffer_ID_EX.memWrite = 0;
 				buffer_ID_EX.PCSrc = 0;
+                buffer_ID_EX.RegDst = 0;
 				break;
 
 			case 43:   //sw instruction
@@ -650,6 +677,7 @@ void pipe_stage_decode()
 				buffer_ID_EX.MemtoReg = 0;
 				buffer_ID_EX.memWrite = 1;
 				buffer_ID_EX.PCSrc = 0;
+                buffer_ID_EX.RegDst = 0;
                 break;
         }
     }
@@ -657,6 +685,84 @@ void pipe_stage_decode()
 	// Forward all control signals required for next stage
 }
 
+
+// Ex Hazard Detection
+
+void pipe_stage_ex_hazard()
+{
+    printf("EX MEM Regwrite: %x \n",buffer_EX_MEM.RegWrite);
+    printf("EX MEM RegDest: %x \n",buffer_EX_MEM.RegDesNumber);
+    printf("EX MEM RS: %x \n",buffer_EX_MEM.RS);
+    printf("EX MEM RT: %x \n",buffer_EX_MEM.RT);
+    printf("ID_EX RD: %x\n",buffer_ID_EX.RD);
+    printf("ID_EX RS: %x\n",buffer_ID_EX.RS);    
+    printf("ID_EX RT: %x\n",buffer_ID_EX.RT);
+
+  if((buffer_EX_MEM.RegWrite) && (buffer_EX_MEM.RegDesNumber!=0) && (buffer_EX_MEM.RegDesNumber == buffer_ID_EX.RS))
+    {
+        printf("Data hazard for RS and RD\n");
+        forwardA=10;  
+
+    }
+
+     else if((buffer_EX_MEM.RegWrite) && (buffer_EX_MEM.RegDesNumber!=0) && (buffer_EX_MEM.RegDesNumber == buffer_ID_EX.RT))
+    {
+        printf("Data hazard for RT and RD\n");
+        forwardB=10;  
+
+    }
+
+
+
+
+
+}
+
+// Mem Hazard Detection
+
+void pipe_stage_mem_hazard()
+{
+
+  if((buffer_MEM_WB.RegWrite) && (buffer_MEM_WB.RegDesNumber!=0) && (buffer_MEM_WB.RegDesNumber == buffer_ID_EX.RS) && (!(((buffer_EX_MEM.RegWrite) && (buffer_EX_MEM.RegDesNumber!=0)) && (buffer_EX_MEM.RegDesNumber!=buffer_ID_EX.RS))))
+    {
+        printf("Data mem hazard for RS and RD\n");
+        forwardA=1;  
+
+    }
+
+     if((buffer_MEM_WB.RegWrite) && (buffer_MEM_WB.RegDesNumber!=0) && (buffer_MEM_WB.RegDesNumber == buffer_ID_EX.RT))
+    {
+        printf("Data mem hazard for RT and RD\n");
+        forwardB=1;  
+
+    }
+
+// Detect one for lw and stall
+
+}
+
+void forward()
+{
+    if (forwardA= 10){buffer_ID_EX.reg1= buffer_MEM_WB.result; }
+    if (forwardB= 10){buffer_ID_EX.reg2=buffer_MEM_WB.result;}    
+
+
+    if (forwardA= 1)
+    {
+        if(buffer_MEM_WB.MemtoReg){   
+        buffer_ID_EX.reg1= buffer_MEM_WB.result; } // Not working; needs value from memory 
+        else
+            {buffer_ID_EX.reg1= buffer_MEM_WB.result;}
+    }
+
+     if (forwardB= 1)
+    {
+        if(buffer_MEM_WB.MemtoReg){   
+        buffer_ID_EX.reg2= buffer_MEM_WB.result; } // Not working; needs value from memory 
+        else
+            {buffer_ID_EX.reg2= buffer_MEM_WB.result;}
+    }
+}
 
 //Fetching the InFstallstruction from memory using mem_read function
 
@@ -692,5 +798,4 @@ void pipe_stage_fetch()
 
     else{printf("I dnt know\n");}
 
-    printf("\n\n----------------------Next Cycle------------------------------------------------\n\n");
 }
