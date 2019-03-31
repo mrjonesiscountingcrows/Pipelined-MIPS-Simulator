@@ -134,7 +134,6 @@ void pipe_stage_mem();
 extern buffer_wb buffer_MEM_WB;
 extern buffer_wb emptyMEMWB;
 void pipe_stage_wb();
-void pipe_stage_ex_hazard();
-void pipe_stage_mem_hazard();
+void hazard_forward();
 
 #endif

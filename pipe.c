@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
+
 int PCsrc=0;
 int TempPC=0;
 int branch=0;
@@ -108,21 +109,21 @@ void pipe_cycle()
 	pipe_stage_decode();
 	pipe_stage_fetch();
     printf("------------------------------------------\n");
-    pipe_stage_ex_hazard();
-    pipe_stage_mem_hazard();
+    hazard_forward();
     printf("\n\n----------------------Next Cycle------------------------------------------------\n\n");
 
 
      if(temp_jump_cs==1)
     {	
         PCsrc=1;
-        NEXT_STATE.PC=TempPC;
         temp_jump_cs=0;
     }
 
     if (branch==1)
 	{
 		PCsrc=1;
+        buffer_IF_ID=emptyIFID;
+        NEXT_STATE.PC-=4;
 		Fstall=FTstall;
 		Estall=ETstall;
 		branch=0;
@@ -285,6 +286,7 @@ void pipe_stage_execute()
 		uint32_t temp = extension(buffer_ID_EX.immediate, 16);
 
 		buffer_EX_MEM.result = buffer_ID_EX.reg1 + temp;
+        printf("The sum is %x\n",buffer_EX_MEM.result);
 
 	}
 
@@ -390,9 +392,10 @@ void pipe_stage_execute()
 		printf("The value in RS is: %u \n", buffer_ID_EX.reg1);
 		if(buffer_ID_EX.reg1 > 0)
         {
+            printf("Reg1: %x\n",buffer_ID_EX.reg1);
          uint32_t temp= extension(buffer_ID_EX.immediate,16);
          temp = temp <<2;
-         TempPC =buffer_ID_EX.PC+ temp;
+         TempPC =buffer_ID_EX.PC+ temp+4;
 		 printf("Next state is: %x \n", NEXT_STATE.PC);
 		 flush();
 		 //buffer_ID_EX=emptyIDEX;
@@ -450,6 +453,7 @@ void pipe_stage_decode()
     if (buffer_IF_ID.instruction==0)
     {
     printf("No Instr\n");
+    buffer_ID_EX=emptyIDEX;
 	return;
     }
 
@@ -496,6 +500,7 @@ void pipe_stage_decode()
 
 		//flush();
 		buffer_ID_EX=emptyIDEX;
+        buffer_IF_ID=emptyIFID;
 
 	}
 
@@ -551,15 +556,16 @@ void pipe_stage_decode()
 
 			case 5:   //bne instruction
                 printf("Bne\n");
-				buffer_ID_EX.ALUCTRL = 6;
+				buffer_ID_EX.ALUCTRL= 6;
 				buffer_ID_EX.ALUsrc= 0;
-				buffer_ID_EX.memRead = 0;
-				buffer_ID_EX.RegWrite = 0;
-				buffer_ID_EX.MemtoReg = 0;
+				buffer_ID_EX.memRead= 0;
+				buffer_ID_EX.RegWrite= 0;
+				buffer_ID_EX.MemtoReg= 0;
 				buffer_ID_EX.memWrite = 0;
                 buffer_ID_EX.RegDst = 0;                
                 branch  = 1;
 				FTstall=2;
+                
 				break;
 
 			case 7:   //bgtz instruction
@@ -574,6 +580,7 @@ void pipe_stage_decode()
                 branch  = 1;
 				buffer_ID_EX.PCSrc = 1;
                 FTstall=2;
+           
 				break;
 
 
@@ -669,7 +676,7 @@ void pipe_stage_decode()
 
 // Ex Hazard Detection
 
-void pipe_stage_ex_hazard()
+void hazard_forward()
 {
     printf("EX MEM Regwrite: %x \n",buffer_EX_MEM.RegWrite);
     printf("EX MEM RegDest: %x \n",buffer_EX_MEM.RegDesNumber);
@@ -693,14 +700,12 @@ void pipe_stage_ex_hazard()
 
     }
 
-}
 
 // Mem Hazard Detection
 
-void pipe_stage_mem_hazard()
-{
 
-  if((buffer_MEM_WB.RegWrite) && (buffer_MEM_WB.RegDesNumber!=0) && (buffer_MEM_WB.RegDesNumber == buffer_ID_EX.RS) && (!(((buffer_EX_MEM.RegWrite) && (buffer_EX_MEM.RegDesNumber!=0)) && (buffer_EX_MEM.RegDesNumber!=buffer_ID_EX.RS))))
+
+  if((buffer_MEM_WB.RegWrite) && (buffer_MEM_WB.RegDesNumber!=0) && (buffer_MEM_WB.RegDesNumber == buffer_ID_EX.RS) && (!(((buffer_MEM_WB.RegWrite) && (buffer_MEM_WB.RegDesNumber!=0)) && (buffer_MEM_WB.RegDesNumber!=buffer_ID_EX.RS))))
     {
         printf("Data mem hazard for RS and RD\n");
         forwardA=1;  
@@ -716,15 +721,17 @@ void pipe_stage_mem_hazard()
 
 // Detect one for lw and stall
 
-}
 
-void forward()
-{
-    if (forwardA= 10){buffer_ID_EX.reg1= buffer_MEM_WB.result; }
-    if (forwardB= 10){buffer_ID_EX.reg2=buffer_MEM_WB.result;}    
+    if (forwardA== 10)
+        {
+        buffer_ID_EX.reg1= buffer_EX_MEM.result; 
+        printf("Forwarding %x\n",buffer_ID_EX.reg1);
+        forwardA=0;
+        }
+    if (forwardB== 10){buffer_ID_EX.reg2=buffer_EX_MEM.result;}    
 
 
-    if (forwardA= 1)
+    if (forwardA== 1)
     {
         if(buffer_MEM_WB.MemtoReg){   
         buffer_ID_EX.reg1= buffer_MEM_WB.result; } // Not working; needs value from memory 
@@ -732,13 +739,14 @@ void forward()
             {buffer_ID_EX.reg1= buffer_MEM_WB.result;}
     }
 
-     if (forwardB= 1)
+     if (forwardB== 1)
     {
         if(buffer_MEM_WB.MemtoReg){   
         buffer_ID_EX.reg2= buffer_MEM_WB.result; } // Not working; needs value from memory 
         else
             {buffer_ID_EX.reg2= buffer_MEM_WB.result;}
     }
+
 }
 
 //Fetching the InFstallstruction from memory using mem_read function
@@ -763,16 +771,27 @@ void pipe_stage_fetch()
 		printf("Stalling Fetch\n");
 	}
 
-
+    
     else if(PCsrc==1)
 	{
-		printf("Jump Instruction executed \n");
+		printf("Jump/Branch Instruction executed \n");
 		PCsrc=0;
         temp_jump_cs=0;
-		buffer_IF_ID.instruction = mem_read_32(CURRENT_STATE.PC);
-		printf("New Instruction:%x \n", buffer_IF_ID.instruction);
+        if(TempPC)
+        {
+            printf("New address\n");
+            buffer_IF_ID.instruction = mem_read_32(TempPC);
+            buffer_IF_ID.PC=TempPC;
+            TempPC=0;
+        }
+        else
+		{buffer_IF_ID.instruction = mem_read_32(CURRENT_STATE.PC);
+        buffer_IF_ID.PC=CURRENT_STATE.PC;		
+        printf("Resuming Instruction:%x \n", buffer_IF_ID.instruction);}
+                
+        NEXT_STATE.PC = CURRENT_STATE.PC + 4;
 	}
 
     else{printf("I dnt know\n");}
-
+    //if(buffer_IF_ID.instruction==0){RUN_BIT=0;}
 }
