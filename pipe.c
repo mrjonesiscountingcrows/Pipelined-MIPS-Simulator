@@ -698,14 +698,14 @@ void hazard_forward()
 
   if((buffer_EX_MEM.RegWrite) && (buffer_EX_MEM.RegDesNumber!=0) && (buffer_EX_MEM.RegDesNumber == buffer_ID_EX.RS))
     {
-        printf("Data hazard for RS and RD\n");
+        printf("Ex Data hazard for RS and RD\n");
         forwardA=10;  
 
     }
 
      else if((buffer_EX_MEM.RegWrite) && (buffer_EX_MEM.RegDesNumber!=0) && (buffer_EX_MEM.RegDesNumber == buffer_ID_EX.RT))
     {
-        printf("Data hazard for RT and RD\n");
+        printf("Ex Data hazard for RT and RD\n");
         forwardB=10;  
 
     }
@@ -749,6 +749,7 @@ void hazard_forward()
         }
     if (forwardB== 10)
         {
+        forwardB=0;
         buffer_ID_EX.reg2=buffer_EX_MEM.result;
         printf("Forwarding B %x\n",buffer_ID_EX.reg2);        
         }    
@@ -756,23 +757,29 @@ void hazard_forward()
 
     if (forwardA== 1)
     {
+        forwardA=0;
         if(buffer_MEM_WB.MemtoReg){   
         buffer_ID_EX.reg1= buffer_MEM_WB.result; 
-        printf("Forwarding A mem%x\n",buffer_ID_EX.reg1);        
+        printf("Forwarding A from mem%x\n",buffer_ID_EX.reg1);        
         } 
         
         else
-            {buffer_ID_EX.reg1= buffer_MEM_WB.result;}
+            {buffer_ID_EX.reg1= buffer_EX_MEM.result;
+            printf("Forwarding A from ex %x\n",buffer_ID_EX.reg2);                
+            }
     }
 
      if (forwardB== 1)
     {
+        forwardB=0;
         if(buffer_MEM_WB.MemtoReg){   
         buffer_ID_EX.reg2= buffer_MEM_WB.result; 
-        printf("Forwarding B mem %x\n",buffer_ID_EX.reg2);
+        printf("Forwarding B from mem %x\n",buffer_ID_EX.reg2);
         } 
         else
-            {buffer_ID_EX.reg2= buffer_MEM_WB.result;}
+            {buffer_ID_EX.reg2= buffer_EX_MEM.result;
+            printf("Forwarding B from ex %x\n",buffer_ID_EX.reg2);            
+            }
     }
 
 }
