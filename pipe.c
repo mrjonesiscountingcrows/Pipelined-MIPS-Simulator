@@ -204,7 +204,7 @@ void pipe_stage_execute()
     //printf("Regwrite status:%d\n",buffer_EX_MEM.RegWrite);
     printf("Opcode:%d \n",buffer_ID_EX.opcode);
 	// R- Type Add Instruction
-	if(Estall){printf("Stalling execute\n"); return; }
+	if(Estall){printf("Stalling execute\n"); buffer_EX_MEM=emptyEXMEM; return; }
 
 	if (buffer_ID_EX.funct==32 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
@@ -330,12 +330,14 @@ void pipe_stage_execute()
 		buffer_ID_EX.immediate = extension(buffer_ID_EX.immediate,16);
 		// Calculate the offset with immediate value
 		buffer_EX_MEM.result= buffer_ID_EX.reg1 + buffer_ID_EX.immediate*4;
+        
+
 
 	}
 
 	// I-Type sw Instruction
 
-	else if (buffer_ID_EX.ALUCTRL==2 && buffer_ID_EX.opcode==43 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==1 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==1 && buffer_ID_EX.MemtoReg==1)
+	else if (buffer_ID_EX.ALUCTRL==2 && buffer_ID_EX.opcode==43 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==1 && buffer_ID_EX.ALUsrc==1 && buffer_ID_EX.MemtoReg==1)
 	{
         printf("I Sw\n");
 		// Calculate the address to write
@@ -343,6 +345,9 @@ void pipe_stage_execute()
 		buffer_EX_MEM.result= buffer_ID_EX.reg1 + buffer_ID_EX.immediate*4;
 
 	}
+
+
+   
 
 
 	// I-Type beq Instruction
@@ -455,6 +460,11 @@ void pipe_stage_decode()
     printf("No Instr\n");
     buffer_ID_EX=emptyIDEX;
 	return;
+    }
+    if(Estall)
+    {
+    printf("Stalling\n");
+    return;
     }
 
     buffer_ID_EX.opcode = buffer_IF_ID.instruction>>26;
@@ -719,22 +729,38 @@ void hazard_forward()
 
     }
 
-// Detect one for lw and stall
 
+        // Detect one for lw 
+            if(buffer_ID_EX.memRead){
+                printf("Mem read for next\n");
+            if((buffer_EX_MEM.RT==buffer_ID_EX.RS)   || (buffer_EX_MEM.RT==buffer_ID_EX.RT) )
+                {
+                    // stall the pipeline
+                    printf("Stalling for Mem\n");
+                    ETstall=1;                
+                }
+               }
 
     if (forwardA== 10)
         {
         buffer_ID_EX.reg1= buffer_EX_MEM.result; 
-        printf("Forwarding %x\n",buffer_ID_EX.reg1);
+        printf("Forwarding A %x\n",buffer_ID_EX.reg1);
         forwardA=0;
         }
-    if (forwardB== 10){buffer_ID_EX.reg2=buffer_EX_MEM.result;}    
+    if (forwardB== 10)
+        {
+        buffer_ID_EX.reg2=buffer_EX_MEM.result;
+        printf("Forwarding B %x\n",buffer_ID_EX.reg2);        
+        }    
 
 
     if (forwardA== 1)
     {
         if(buffer_MEM_WB.MemtoReg){   
-        buffer_ID_EX.reg1= buffer_MEM_WB.result; } // Not working; needs value from memory 
+        buffer_ID_EX.reg1= buffer_MEM_WB.result; 
+        printf("Forwarding A mem%x\n",buffer_ID_EX.reg1);        
+        } 
+        
         else
             {buffer_ID_EX.reg1= buffer_MEM_WB.result;}
     }
@@ -742,7 +768,9 @@ void hazard_forward()
      if (forwardB== 1)
     {
         if(buffer_MEM_WB.MemtoReg){   
-        buffer_ID_EX.reg2= buffer_MEM_WB.result; } // Not working; needs value from memory 
+        buffer_ID_EX.reg2= buffer_MEM_WB.result; 
+        printf("Forwarding B mem %x\n",buffer_ID_EX.reg2);
+        } 
         else
             {buffer_ID_EX.reg2= buffer_MEM_WB.result;}
     }
@@ -766,7 +794,7 @@ void pipe_stage_fetch()
 		NEXT_STATE.PC = CURRENT_STATE.PC + 4;
 	}
 
-	else if (Fstall)
+	else if (Fstall || Estall)
 	{
 		printf("Stalling Fetch\n");
 	}
