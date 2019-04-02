@@ -6,7 +6,7 @@
  Tapan Tandon
 
  */
-
+         
 #include "pipe.h"
 #include <stdio.h>
 #include <string.h>
@@ -139,16 +139,16 @@ void pipe_cycle()
 void pipe_stage_wb()
 {
     printf("----------WB------------\n");
-    //printf("Regwrite status:%d\n",buffer_EX_MEM.RegWrite);
+    //printf("Regwrite statufrom ex 15fs:%d\n",buffer_EX_MEM.RegWrite);
 	if(buffer_MEM_WB.RegWrite==1)
 	{
-        printf("Write back\n");
+        printf("Write back to register %d\n",buffer_MEM_WB.RegDesNumber);
         // Write to a register based upon RegDest
         if (buffer_MEM_WB.RegDst==1)
         {
             //
 		    NEXT_STATE.REGS[buffer_MEM_WB.RegDesNumber] = buffer_MEM_WB.result;
-            printf("wrote R: %x\n",NEXT_STATE.REGS[buffer_EX_MEM.RD]);
+            printf("wrote R: %x\n",NEXT_STATE.REGS[buffer_EX_MEM.RegDesNumber]);
 }
 
         else
@@ -156,7 +156,7 @@ void pipe_stage_wb()
             // extend to immediate
 		   // NEXT_STATE.REGS[buffer_MEM_WB.RT] = buffer_EX_MEM.RT;
             NEXT_STATE.REGS[buffer_MEM_WB.RegDesNumber] = buffer_MEM_WB.result;
-            printf("wrote I: %x\n",NEXT_STATE.REGS[buffer_MEM_WB.RT]);
+            printf("wrote I: %x\n",NEXT_STATE.REGS[buffer_MEM_WB.RegDesNumber]);
         }
 
     }
@@ -216,7 +216,10 @@ void pipe_stage_execute()
 	if (buffer_ID_EX.funct==32 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R Add\n");
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("Reg2:%x\n",buffer_ID_EX.reg2);
 		buffer_EX_MEM.result = buffer_ID_EX.reg1 + buffer_ID_EX.reg2;
+		printf("Result:%x\n",buffer_EX_MEM.result);
 	}
 
 	// R- Type Addu Instruction
@@ -224,7 +227,10 @@ void pipe_stage_execute()
 	else if (buffer_ID_EX.funct==33 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R Addu\n");
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("Reg2:%x\n",buffer_ID_EX.reg2);
 		buffer_EX_MEM.result = buffer_ID_EX.reg1 + buffer_ID_EX.reg2;
+		printf("Result:%x\n",buffer_EX_MEM.result);
 	}
 
 	// R- Type Sub Instruction
@@ -232,7 +238,10 @@ void pipe_stage_execute()
 	else if (buffer_ID_EX.funct==34 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R sub\n");
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("Reg2:%x\n",buffer_ID_EX.reg2);
 		buffer_EX_MEM.result = buffer_ID_EX.reg1 - buffer_ID_EX.reg2;
+		printf("Result:%x\n",buffer_EX_MEM.result);
 	}
 
 	// R- Type Subu Instruction
@@ -240,7 +249,10 @@ void pipe_stage_execute()
 	else if (buffer_ID_EX.funct==35 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R subu\n");
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("Reg2:%x\n",buffer_ID_EX.reg2);
 		buffer_EX_MEM.result = buffer_ID_EX.reg1 - buffer_ID_EX.reg2;
+		printf("Result:%x\n",buffer_EX_MEM.result);
 	}
 
 	// R- Type Slt Instruction
@@ -249,14 +261,18 @@ void pipe_stage_execute()
 	{
 
 		printf("R slt\n");
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("Reg2:%x\n",buffer_ID_EX.reg2);
 		if(buffer_ID_EX.reg1  < buffer_ID_EX.reg2)
 		{
 			buffer_EX_MEM.result = 1;
+			//printf("Result:%x\n",buffer_EX_MEM.result);
 		}
 
 		else
 		{
 			buffer_EX_MEM.result = 0;
+			//printf("Result:%x\n",buffer_EX_MEM.result);
 		}
         printf("Result for slt is:%x \n", buffer_EX_MEM.result);
 
@@ -268,6 +284,8 @@ void pipe_stage_execute()
 	else if (buffer_ID_EX.funct==43 && buffer_ID_EX.RegWrite==1 && buffer_ID_EX.memRead==0 && buffer_ID_EX.memWrite==0 && buffer_ID_EX.ALUsrc==0 && buffer_ID_EX.MemtoReg==0)
 	{
         printf("R sltu\n");
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("Reg2:%x\n",buffer_ID_EX.reg2);
 		if(buffer_ID_EX.reg1  < buffer_ID_EX.reg2)
 		{
 			buffer_EX_MEM.result = 1;
@@ -277,7 +295,7 @@ void pipe_stage_execute()
 		{
 			buffer_EX_MEM.result = 0;
 		}
-
+		printf("Result for sltu is:%x \n", buffer_EX_MEM.result);
 	}
 
 	//Start of I-Type Instructions
@@ -288,7 +306,8 @@ void pipe_stage_execute()
 	{
         printf("I Addi\n");
 		uint32_t temp = extension(buffer_ID_EX.immediate, 16);
-
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("Temp:%x\n",temp);
 		buffer_EX_MEM.result = buffer_ID_EX.reg1 + temp;
         printf("The sum is %x\n",buffer_EX_MEM.result);
 
@@ -301,8 +320,10 @@ void pipe_stage_execute()
 	{
         printf("I Addiu\n");
 		uint32_t temp = extension(buffer_ID_EX.immediate, 16);
-
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("Temp:%x\n",temp);
 		buffer_EX_MEM.result = buffer_ID_EX.reg1 + temp;
+		printf("The sum is %x\n",buffer_EX_MEM.result);
 
 	}
 
@@ -313,6 +334,7 @@ void pipe_stage_execute()
 	{
         printf("I Lui\n");
 		buffer_EX_MEM.result = (buffer_ID_EX.immediate << 16) & 0xFFFF0000;
+		printf("The Lui is %x\n",buffer_EX_MEM.result);
 
 	}
 
@@ -322,6 +344,8 @@ void pipe_stage_execute()
 	{
         printf("I Ori\n");
 		buffer_EX_MEM.result = buffer_ID_EX.reg1 | buffer_ID_EX.immediate;
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("The ori is %x\n",buffer_EX_MEM.result);
 
 	}
 
@@ -333,6 +357,8 @@ void pipe_stage_execute()
 		buffer_ID_EX.immediate = extension(buffer_ID_EX.immediate,16);
 		// Calculate the offset with immediate value
 		buffer_EX_MEM.result= buffer_ID_EX.reg1 + buffer_ID_EX.immediate*4;
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("The lw %x\n",buffer_EX_MEM.result);
 
 	}
 
@@ -344,6 +370,8 @@ void pipe_stage_execute()
 		// Calculating the address to write
 		buffer_ID_EX.immediate = extension(buffer_ID_EX.immediate,16);
 		buffer_EX_MEM.result= buffer_ID_EX.reg1 + buffer_ID_EX.immediate*4;
+		printf("Reg1:%x\n",buffer_ID_EX.reg1);
+		printf("The ori is %x\n",buffer_EX_MEM.result);
 
 	}   
 
@@ -414,8 +442,8 @@ void pipe_stage_execute()
 	{
 		printf("Slti\n");
         buffer_ID_EX.reg1 = extension(buffer_ID_EX.reg1,16);
-        buffer_ID_EX.reg2 = extension(buffer_ID_EX.immediate,16);
-
+        buffer_ID_EX.immediate = extension(buffer_ID_EX.immediate,16);
+		printf("Reg1: %x\n",buffer_ID_EX.reg1);
         if(buffer_ID_EX.reg1  < buffer_ID_EX.immediate)
 		{
 			buffer_EX_MEM.result = 1;
@@ -425,6 +453,7 @@ void pipe_stage_execute()
 		{
 			buffer_EX_MEM.result = 0;
 		}
+		printf("The result is %x\n",buffer_EX_MEM.result);
 
 	}
 
@@ -482,6 +511,8 @@ void pipe_stage_decode()
 		buffer_ID_EX.funct = buffer_IF_ID.instruction & 0x3F;
 		buffer_ID_EX.shamt = (buffer_IF_ID.instruction>>6) & 0x1F;
         printf("Function value:%d \n",buffer_ID_EX.funct);
+		printf("Reg1:%d \n",buffer_ID_EX.reg1);
+		printf("Reg2:%d \n",buffer_ID_EX.reg2);
 	}
 
 	//J-Type Instruction Decoding
@@ -520,6 +551,7 @@ void pipe_stage_decode()
         buffer_ID_EX.reg2= CURRENT_STATE.REGS[buffer_ID_EX.RT];
         buffer_ID_EX.RegDesNumber=buffer_ID_EX.RT;
 		buffer_ID_EX.immediate = buffer_IF_ID.instruction & 0x000FFFF;
+		printf("Reg1:%d \n",buffer_ID_EX.reg1);
 
 	}
 
@@ -740,14 +772,14 @@ void hazard_forward()
     if (forwardA== 10)
         {
         buffer_ID_EX.reg1= buffer_EX_MEM.result; 
-        printf("Forwarding A: %x\n",buffer_ID_EX.reg1);
+        printf("Forwarding EX A: %x\n",buffer_ID_EX.reg1);
         forwardA=0;
         }
     if (forwardB== 10)
         {
         forwardB=0;
         buffer_ID_EX.reg2=buffer_EX_MEM.result;
-        printf("Forwarding B: %x\n",buffer_ID_EX.reg2);        
+        printf("Forwarding EX B: %x\n",buffer_ID_EX.reg2);        
         }    
 
 
@@ -761,7 +793,7 @@ void hazard_forward()
         
         else
             {buffer_ID_EX.reg1= buffer_EX_MEM.result;
-            printf("Forwarding A from ex %x\n",buffer_ID_EX.reg2);                
+            printf("Forwarding A from ex %x\n",buffer_ID_EX.reg1);                
             }
     }
 
@@ -773,7 +805,7 @@ void hazard_forward()
         printf("Forwarding B from mem %x\n",buffer_ID_EX.reg2);
         } 
         else
-            {buffer_ID_EX.reg2= buffer_EX_MEM.result;
+            {buffer_ID_EX.reg2= buffer_MEM_WB.result;
             printf("Forwarding B from ex %x\n",buffer_ID_EX.reg2);            
             }
     }
